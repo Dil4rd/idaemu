@@ -14,6 +14,7 @@ from unicorn.arm_const import *
 from unicorn.arm64_const import *
 from struct import unpack, pack, unpack_from, calcsize
 from idc import get_qword, get_bytes, read_selection_start, read_selection_end, here, get_item_size
+from ida_lines import generate_disasm_line, GENDSM_FORCE_CODE, GENDSM_MULTI_LINE, GENDSM_REMOVE_TAGS
 from idautils import XrefsTo
 
 PAGE_ALIGN = 0x1000  # 4k
@@ -130,7 +131,8 @@ class Emu(object):
 
     def _hook_code(self, uc, address, size, user_data):
         if self.trace_option & TRACE_CODE:
-            self._add_trace("### Trace Instruction at 0x%x, size = %u" % (address, size))
+            disasm = generate_disasm_line(address, GENDSM_FORCE_CODE|GENDSM_MULTI_LINE|GENDSM_REMOVE_TAGS)
+            self._add_trace(f"### Trace instruction at address={address:#x}, size={size:d}:\t{disasm!s}")
         if address in self.altFunc.keys():
             func, argc, balance = self.altFunc[address]
             try:
