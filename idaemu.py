@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import math
 import recordclass
+import enum
 
 import idaapi
 import ida_idaapi
@@ -33,6 +34,9 @@ def target_to_ea(target):
     elif type(target) is int:
         address = target
     return address
+
+class CpuExtensions(enum.IntFlag):
+    ARM_VFP = 1
 
 class MemRange(recordclass.RecordClass):
     address: int
@@ -99,6 +103,7 @@ class Emu(object):
         self.data = []
         self.regs = []
         self.uc = None
+        self.cpu_extensions = 0
         self.trace_option = TRACE_OFF
         self.trace_buf = []
         self.altFunc = {}
@@ -356,11 +361,21 @@ class Emu(object):
             self.uc.mem_write(address, data)
 
     def _init_platform_regs(self):
-        if self.arch == UC_ARCH_ARM64:
-            # allow access to vector registers (Qx or Dx)
-            # for more see here: https://github.com/unicorn-engine/unicorn/issues/940
-            cpacr = self.uc.reg_read(UC_ARM64_REG_CPACR_EL1)
-            self.uc.reg_write(UC_ARM64_REG_CPACR_EL1, cpacr|0x300000) # set FPEN bit
+        if self.arch == UC_ARCH_ARM:
+            if self.cpu_extensions & CpuExtensions.ARM_VFP:
+                # FP/NEON support at EL1 (qemu and unicorn works on EL1)
+                cpacr = self.uc.reg_read(UC_ARM64_REG_CPACR_EL1)
+                self.uc.reg_write(UC_ARM64_REG_CPACR_EL1, cpacr|(3<<20)) # set FPEN bits
+                ### set some flags, like at https://github.com/in7egral/idaemu
+                regval = self.curUC.reg_read(UC_ARM_REG_C1_C0_2)
+                regval |= (0xF << 20)
+                self.curUC.reg_write(UC_ARM_REG_C1_C0_2, regval)
+                self.curUC.reg_write(UC_ARM_REG_FPEXC, 0x40000000)
+        elif self.arch == UC_ARCH_ARM64:
+            if self.cpu_extensions & CpuExtensions.ARM_VFP:
+                # FP/NEON support at EL1 (qemu and unicorn works on EL1)
+                cpacr = self.uc.reg_read(UC_ARM64_REG_CPACR_EL1)
+                self.uc.reg_write(UC_ARM64_REG_CPACR_EL1, cpacr|(3<<20)) # set FPEN bits
 
     def _init_regs(self):
         self._init_platform_regs()
