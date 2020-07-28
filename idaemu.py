@@ -480,7 +480,11 @@ class Emu(object):
             self.uc.hook_add(UC_HOOK_CODE, self._hook_code)
 
             # start emulate
-            self.uc.emu_start(startAddr, stopAddr, timeout=timeout, count=count)
+            if self.mode == UC_MODE_THUMB:
+                # Start at ADDRESS | 1 to indicate THUMB mode.
+                uc.emu_start(startAddr | 1, stopAddr, timeout=timeout, count=count)
+            else:
+                uc.emu_start(startAddr, stopAddr, timeout=timeout, count=count)
         except UcError as e:
             print("#ERROR: %s" % e)
 
