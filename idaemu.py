@@ -4,6 +4,7 @@ import math
 import recordclass
 import enum
 
+import idc
 import idaapi
 import ida_idaapi
 import ida_name
@@ -481,12 +482,18 @@ class Emu(object):
 
             # start emulate
             if self.mode == UC_MODE_THUMB:
-                # Start at ADDRESS | 1 to indicate THUMB mode.
-                uc.emu_start(startAddr | 1, stopAddr, timeout=timeout, count=count)
+                self.uc.emu_start(startAddr | 1, stopAddr, timeout=timeout, count=count)
             else:
-                uc.emu_start(startAddr, stopAddr, timeout=timeout, count=count)
+                self.uc.emu_start(startAddr, stopAddr, timeout=timeout, count=count)
         except UcError as e:
             print("#ERROR: %s" % e)
+
+    def _is_thumb_ea(self, ea):
+        if idaapi.ph.id == idaapi.PLFM_ARM and not idaapi.ph.flag & idaapi.PR_USE64:
+            t = idc.get_sreg(ea, "T") # get T flag
+            return t is not idc.BADSEL and t is not 0
+        else:
+            return False
 
     # set data before emulation
     def set_data(self, address, data, init=False):
@@ -564,16 +571,19 @@ class Emu(object):
             else:
                 print("Please offer the return address.")
                 return
-        self._emulate(func.start_ea, retAddr, args)
+        func_address = func.start_ea | 1 if self._is_thumb_ea(func.start_ea) else func.start_ea
+        self._emulate(func_address, retAddr, args)
         res = self.uc.reg_read(self.REG_RES)
         return res
 
     def eBlock(self, codeStart=None, codeEnd=None):
         if codeStart == None: codeStart = read_selection_start()
         if codeEnd == None: codeEnd = read_selection_end()
+        codeStart = codeStart | 1 if self._is_thumb_ea(codeStart) else codeStart
         self._emulate(codeStart, codeEnd)
         self._show_regs()
 
     def eUntilAddress(self, startAddr, stopAddr, args=[], TimeOut=0, Count=0):
+        startAddr = startAddr | 1 if self._is_thumb_ea(startAddr) else startAddr
         self._emulate(startAddr=startAddr, stopAddr=stopAddr, args=args, TimeOut=TimeOut, Count=Count)
         self._show_regs()
