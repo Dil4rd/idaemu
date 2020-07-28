@@ -1,5 +1,6 @@
-idaemu
-==============
+# idaemu
+
+This is fork of <https://github.com/36hours/idaemu/>!
 
 idaemu is an IDA Pro Plugin - use for emulating code in IDA Pro. It is based on [unicorn-engine](http://www.unicorn-engine.org).  
 
@@ -9,20 +10,26 @@ Support architecture:
 - ARM64 (ARMv8)
 - MIPS (developing)
 
-Install
--------
-
-If you want to use idaemu, you have to install [unicorn-engine](http://www.unicorn-engine.org) and unicorn's python binding first. Then use the `idaemu.py` as the idapython script.  
+## Install
 
 
-License
--------
+Install dependencies:
+- [unicorn-engine](http://www.unicorn-engine.org)
+- [recordclass](https://bitbucket.org/intellimath/recordclass/)
+
+```bash
+pip3 install -r requirements.txt
+```
+
+Then use the `idaemu.py` as the idapython script.
+
+## License
 
 This project is released under the [GPL license](COPYING).
 
+## Examples
 
-Example1
--------
+### Example1
 
 This is easy function for add. 
 ```
@@ -54,9 +61,7 @@ Get the function result:
 107
 ```
 
-
-Example2
--------
+### Example2
 
 If there is a library function call inner the function, we couldn't call it directly. We should use `alt` to hook the library function first.
 ```
@@ -93,12 +98,11 @@ def myprint(uc, out, args):
     out.append("this is hook output: %d" % args[1])
     return 0
 
-myadd_addr = 0x00400560
 printf_addr = 0x00400410 
 a.alt(printf_addr, myprint, 2, False)
-a.eFunc(myadd_addr, None, [1, 7])
+a.eFunc('myadd', None, [1, 7])
 print "---- below is the trace ----"
-a.showTrace()
+a.show_trace()
 ```
 
 Get the result:
@@ -108,9 +112,7 @@ this is hook output: 8
 ```
 Well Done. We can alter every function in this way.
 
-
-Example3
--------
+### Example3
 
 Sometimes it emulates fail with some abort:
 ``` 
@@ -121,16 +123,16 @@ Python>print a.eFunc(here(), 0xbeae, [4])
 1048576
 ```
 
-Then we can use `setTrace` and `showTrace` for debugging.
+Then we can use `set_trace` and `show_trace` for debugging.
 
 ```
 Python>from idaemu import *
 Python>a = Emu(UC_ARCH_ARM, UC_MODE_THUMB)
-Python>a.setTrace(TRACE_CODE)
+Python>a.set_trace(TRACE_CODE)
 Python>a.eFunc(here(), 0xbeae, [4])
 #ERROR: Invalid instruction (UC_ERR_INSN_INVALID)
 1048576
-Python>a.showTrace()
+Python>a.show_trace()
 ### Trace Instruction at 0x13dc, size = 2
 ### Trace Instruction at 0x13de, size = 2
 ### Trace Instruction at 0x13e0, size = 2
